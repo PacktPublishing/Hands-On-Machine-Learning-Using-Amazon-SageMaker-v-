@@ -1,0 +1,159 @@
+#!/usr/bin/env python
+# coding=utf-8
+from __future__ import print_function
+
+import os
+import json
+import pickle
+import sys
+import traceback
+
+import pandas as pd
+from sklearn import ensemble
+from sklearn.metrics import precision_score, recall_score
+from sklearn.model_selection import train_test_split
+
+
+"""
+When Amazon SageMaker executes training, this train script runs just 
+like a regular Python script. The EC2 server that
+will run this script will be initialized with the following directories:
+
+/opt/ml
+├── input
+│   ├── config
+│   │   ├── hyperparameters.json
+│   │   └── resourceConfig.json
+│   └── data
+│       └── <channel_name> example: training
+│           └── <input data>
+├── model
+│   └── <model files>
+└── output
+    └── failure 
+    
+The input:
+
+/opt/ml/input/config contains configuration to control how your program runs. 
+hyperparameters.json is a JSON-formatted dictionary of hyperparameter names 
+to values. These values will always be strings, so you may need to convert 
+them. resourceConfig.json is a JSON-formatted file that describes the network 
+layout used for distributed training. 
+Since scikit-learn doesn't support distributed training, we'll ignore it here.
+
+/opt/ml/input/data/<channel_name>/ (for File mode) contains the input data 
+for that channel. 
+
+/opt/ml/input/data/<channel_name>_<epoch_number> (for Pipe mode) is the pipe
+for a given epoch. Epochs start at zero and go up by one each time you read 
+them. There is no limit to the number of epochs that you can run, but you 
+must close each pipe before reading the next epoch.
+
+The output:
+
+/opt/ml/model/ is the directory where you write the model (or any other file) that your program generates. SageMaker 
+will package any files in this directory into a compressed tar archive file.
+This file will be available at an S3 location.
+
+/opt/ml/output is a directory where the algorithm can write a file failure
+that describes why the job failed. 
+"""
+
+_PREFIX = '/opt/ml/'
+
+_INPUT_PATH = _PREFIX + 'input/data/training'
+_OUTPUT_PATH = os.path.join(_PREFIX, 'output')
+_MODEL_PATH = os.path.join(_PREFIX, 'model')
+_HYPER_PARAM_PATH = os.path.join(
+    _PREFIX, 'input/config/hyperparameters.json'
+)
+_FAILURE_OUTPUT_PATH = os.path.join(_OUTPUT_PATH, 'failure')
+
+
+def _read_hyper_params():
+    with open(_HYPER_PARAM_PATH, 'r') as tc:
+        return json.load(tc)
+
+
+def _save_model(clf):
+    with open(os.path.join(_MODEL_PATH, 'model.pkl'), 'wb') as out:
+        pickle.dump(clf, out)
+
+
+def _save_metrics(precision, recall):
+    with open(os.path.join(_MODEL_PATH, 'metrics.txt'), 'w') as out:
+        out.write(
+            "precision={precision}\nrecall={recall}".format(
+                precision=str(precision),
+                recall=str(recall)
+            )
+        )
+
+
+def train():
+    print('Starting the training.')
+    try:
+        training_params = _read_hyper_params()
+
+        data_input_file = os.path.join(_INPUT_PATH, 'iris.csv')
+        data_df = pd.read_csv(data_input_file, header=None)
+
+        # labels are in the first column
+        labels = data_df.ix[:, 0]
+        features = data_df.ix[:, 1:]
+
+        train_features, test_features, labels_train, labels_test = \
+            train_test_split(
+                features, labels, test_size=0.3, random_state=42
+            )
+
+        max_leaf_nodes = training_params.get('max_leaf_nodes', None)
+        if max_leaf_nodes is not None:
+            max_leaf_nodes = int(max_leaf_nodes)
+
+        clf = ensemble.RandomForestClassifier(
+            max_leaf_nodes=max_leaf_nodes
+        )
+        clf = clf.fit(train_features, labels_train)
+
+        test_predictions = clf.predict(test_features)
+
+        precision = precision_score(
+            labels_test, test_predictions, average='macro'
+        )
+        recall = recall_score(
+            labels_test, test_predictions, average='macro'
+        )
+
+        _save_metrics(precision, recall)
+
+        clf = clf.fit(features, labels)
+        _save_model(clf)
+
+        print('Training complete.')
+    except Exception as e:
+        # Write out an error file. This will be returned as the
+        # failureReason in the
+        # DescribeTrainingJob result.
+        trc = traceback.format_exc()
+        if _FAILURE_OUTPUT_PATH:
+            with open(os.path.join(_FAILURE_OUTPUT_PATH, 'failure'), 'w') \
+                    as s:
+                s.write('Exception during training: ' + str(e) + '\n' + trc)
+            # Printing this causes the exception to be in the training
+            # job logs, as well.
+            print(
+                'Exception during training: ' + str(e) + '\n' + trc,
+                file=sys.stderr
+            )
+
+        # A non-zero exit code causes the training job to be marked as
+        # Failed.
+        sys.exit(255)
+
+
+if __name__ == '__main__':
+    train()
+
+    # A zero exit code causes the job to be marked a succeeded.
+    sys.exit(0)
