@@ -38,8 +38,7 @@ The input:
 hyperparameters.json is a JSON-formatted dictionary of hyperparameter names 
 to values. These values will always be strings, so you may need to convert 
 them. resourceConfig.json is a JSON-formatted file that describes the network 
-layout used for distributed training. 
-Since scikit-learn doesn't support distributed training, we'll ignore it here.
+layout used for distributed training.
 
 /opt/ml/input/data/<channel_name>/ (for File mode) contains the input data 
 for that channel. 
