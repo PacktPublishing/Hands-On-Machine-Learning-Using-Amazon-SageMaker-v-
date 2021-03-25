@@ -27,7 +27,7 @@ protobuf==3.6.1
 protobuf3-to-dict==0.1.5
 python-crfsuite==0.9.6
 python-dateutil==2.7.5
-PyYAML==3.13
+PyYAML==5.4
 requests==2.20.1
 s3transfer==0.1.13
 sagemaker==1.16.1.post1
