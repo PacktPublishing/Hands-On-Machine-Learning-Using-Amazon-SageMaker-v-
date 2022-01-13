@@ -1,6 +1,6 @@
 jupyter==1.0.0
 numpy==1.15.1
-Pillow==5.3.0
+Pillow==9.0.0
 pandas==0.23.4
 sagemaker==1.16.1.post1
 torchvision==0.2.1
