@@ -22,7 +22,7 @@ Keras==2.2.4
 Keras-Applications==1.0.6
 Keras-Preprocessing==1.0.5
 Markdown==3.0.1
-numpy==1.15.4
+numpy==1.22.0
 protobuf==3.6.1
 protobuf3-to-dict==0.1.5
 python-crfsuite==0.9.6
