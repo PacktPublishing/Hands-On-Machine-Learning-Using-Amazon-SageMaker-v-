@@ -1,5 +1,5 @@
 jupyter==1.0.0
-numpy==1.15.1
+numpy==1.22.0
 Pillow==5.3.0
 pandas==0.23.4
 sagemaker==1.16.1.post1
