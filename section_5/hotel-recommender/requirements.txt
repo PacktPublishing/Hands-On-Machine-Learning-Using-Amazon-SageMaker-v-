@@ -1,6 +1,6 @@
 click==7.0
 gensim==3.5.0
 jupyter==1.0.0
-numpy==1.15.1
+numpy==1.22.0
 pandas==0.23.4
 sagemaker==1.16.1.post1
